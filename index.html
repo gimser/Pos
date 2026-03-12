@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام نقاط البيع (POS)</title>
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2250/2250401.png" type="image/png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-cash-register"></i>
+                <span>نقطة بيع</span>
+            </div>
+            <nav>
+                <ul>
+                    <li class="active" data-target="pos-section">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>البيع (POS)</span>
+                    </li>
+                    <li data-target="products-section">
+                        <i class="fas fa-box-open"></i>
+                        <span>المنتجات</span>
+                    </li>
+                    <li data-target="sales-section">
+                        <i class="fas fa-receipt"></i>
+                        <span>المبيعات</span>
+                    </li>
+                    <li data-target="dashboard-section">
+                        <i class="fas fa-chart-line"></i>
+                        <span>الإحصائيات</span>
+                    </li>
+                    <li data-target="settings-section">
+                        <i class="fas fa-cog"></i>
+                        <span>الإعدادات</span>
+                    </li>
+                </ul>
+                <div class="sidebar-footer" style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
+                    <button id="dark-mode-toggle" class="btn btn-secondary btn-sm w-full" style="background: rgba(255,255,255,0.1);">
+                        <i class="fas fa-moon"></i> <span>الوضع الليلي</span>
+                    </button>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- POS Section -->
+            <section id="pos-section" class="section active">
+                <div class="pos-layout">
+                    <div class="products-area">
+                        <div class="pos-header">
+                            <div class="search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="pos-search" placeholder="بحث (F1)...">
+                            </div>
+                            <button id="scan-btn" class="btn btn-secondary">
+                                <i class="fas fa-barcode"></i> مسح (F2)
+                            </button>
+                            <button id="refund-mode-btn" class="btn btn-danger">
+                                <i class="fas fa-undo"></i> استرجاع
+                            </button>
+                            <button id="view-parked-btn" class="btn btn-warning">
+                                <i class="fas fa-clock"></i> المعلقة
+                            </button>
+                        </div>
+                        <div class="categories-filter" id="categories-filter">
+                            <button class="filter-btn active" data-category="all">الكل</button>
+                            <!-- Categories will be injected here -->
+                        </div>
+                        <div class="products-grid" id="products-grid">
+                            <!-- Products will be injected here -->
+                        </div>
+                    </div>
+                    <div class="cart-area">
+                        <div class="cart-header">
+                            <h3>سلة المشتريات</h3>
+                            <div class="cart-header-actions" style="display: flex; align-items: center; gap: 10px;">
+                                <button id="new-invoice-btn" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> فاتورة جديدة</button>
+                                <button id="clear-cart-btn" class="btn-icon"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="cart-items" id="cart-items">
+                            <!-- Cart items will be injected here -->
+                        </div>
+                        <div class="quick-cash-panel">
+                            <h4 class="panel-title">دفع سريع (درهم مغربي)</h4>
+                            <div class="cash-buttons">
+                                <button class="cash-btn" onclick="quickPay(200)" title="200 درهم">
+                                    <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/e/e3/200_Moroccan_Dirhams_back.jpg&w=120&h=70&fit=cover" alt="200 DH" referrerPolicy="no-referrer">
+                                    <span>200 DH</span>
+                                </button>
+                                <button class="cash-btn" onclick="quickPay(100)" title="100 درهم">
+                                    <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/7/7a/100_Moroccan_Dirhams_front.jpg&w=120&h=70&fit=cover" alt="100 DH" referrerPolicy="no-referrer">
+                                    <span>100 DH</span>
+                                </button>
+                                <button class="cash-btn" onclick="quickPay(50)" title="50 درهم">
+                                    <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/5/5a/50_Moroccan_Dirhams_front.jpg&w=120&h=70&fit=cover" alt="50 DH" referrerPolicy="no-referrer">
+                                    <span>50 DH</span>
+                                </button>
+                                <button class="cash-btn" onclick="quickPay(20)" title="20 درهم">
+                                    <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/0/0a/20_Moroccan_Dirhams_front.jpg&w=120&h=70&fit=cover" alt="20 DH" referrerPolicy="no-referrer">
+                                    <span>20 DH</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="cart-footer">
+                            <div class="cart-summary">
+                                <div class="summary-row">
+                                    <span>المجموع:</span>
+                                    <span id="cart-total">0.00</span>
+                                </div>
+                            </div>
+                            <div class="cart-actions">
+                                <button id="park-sale-btn" class="btn btn-warning">تعليق</button>
+                                <button id="checkout-btn" class="btn btn-primary">دفع (F4)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Products Section -->
+            <section id="products-section" class="section">
+                <div class="section-header">
+                    <h2>إدارة المنتجات</h2>
+                    <button id="add-product-btn" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة منتج</button>
+                </div>
+                <div class="table-container">
+                    <table id="products-table">
+                        <thead>
+                            <tr>
+                                <th>الصورة</th>
+                                <th>الاسم</th>
+                                <th>الباركود</th>
+                                <th>السعر</th>
+                                <th>المخزون</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Products rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sales Section -->
+            <section id="sales-section" class="section">
+                <div class="section-header">
+                    <h2>سجل المبيعات</h2>
+                    <button id="new-invoice-from-sales" class="btn btn-primary"><i class="fas fa-plus"></i> فاتورة جديدة</button>
+                </div>
+                <div class="table-container">
+                    <table id="sales-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th>المجموع</th>
+                                <th>طريقة الدفع</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Sales rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="section">
+                <div class="section-header">
+                    <h2>لوحة الإحصائيات</h2>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <h3>مبيعات اليوم</h3>
+                            <p id="today-sales">0.00</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #2ecc71;"><i class="fas fa-hand-holding-usd"></i></div>
+                        <div class="stat-info">
+                            <h3>أرباح اليوم</h3>
+                            <p id="today-profit">0.00</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="stat-info">
+                            <h3>مبيعات الشهر</h3>
+                            <p id="month-sales">0.00</p>
+                        </div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="stat-info">
+                            <h3>نقص المخزون</h3>
+                            <p id="low-stock-count">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container" style="margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <canvas id="sales-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="section">
+                <div class="section-header">
+                    <h2>الإعدادات والنسخ الاحتياطي</h2>
+                </div>
+                <div class="settings-grid">
+                    <div class="setting-card">
+                        <h3>بيانات المتجر</h3>
+                        <form id="store-settings-form">
+                            <div class="form-group">
+                                <label>شعار المتجر</label>
+                                <div class="logo-upload" style="text-align: center; margin-bottom: 15px;">
+                                    <img id="store-logo-preview" src="https://via.placeholder.com/100" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #eee;">
+                                    <input type="file" id="store-logo-input" accept="image/*" style="display: none;">
+                                    <button type="button" class="btn btn-secondary btn-sm w-full" style="margin-top: 10px;" onclick="document.getElementById('store-logo-input').click()">تغيير الشعار</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>اسم المتجر</label>
+                                <input type="text" id="store-name" value="متجري">
+                            </div>
+                            <div class="form-group">
+                                <label>العنوان</label>
+                                <input type="text" id="store-address" value="العنوان">
+                            </div>
+                            <div class="form-group">
+                                <label>الهاتف</label>
+                                <input type="text" id="store-phone" value="0500000000">
+                            </div>
+                            <button type="submit" class="btn btn-primary">حفظ</button>
+                        </form>
+                    </div>
+                    <div class="setting-card">
+                        <h3>النسخ الاحتياطي</h3>
+                        <div class="backup-actions">
+                            <button id="export-db-btn" class="btn btn-success"><i class="fas fa-download"></i> تصدير البيانات</button>
+                            <div class="import-box">
+                                <input type="file" id="import-db-file" accept=".json" style="display: none;">
+                                <button id="import-db-btn" class="btn btn-warning"><i class="fas fa-upload"></i> استيراد البيانات</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>إتمام الدفع</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="checkout-summary">
+                    <div class="total-display">
+                        <span>المطلوب:</span>
+                        <span id="checkout-total">0.00</span>
+                    </div>
+                </div>
+                <div class="payment-methods">
+                    <button class="payment-btn active" data-method="cash"><i class="fas fa-money-bill"></i> نقداً</button>
+                    <button class="payment-btn" data-method="card"><i class="fas fa-credit-card"></i> بطاقة</button>
+                </div>
+                <div class="payment-input-area" id="cash-input-area">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الخصم (مبلغ)</label>
+                            <input type="number" id="checkout-discount" placeholder="0.00" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>المبلغ المدفوع</label>
+                            <input type="number" id="amount-paid" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="quick-cash-modal">
+                        <button class="cash-btn-modal" onclick="addAmount(200)">
+                            <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/e/e3/200_Moroccan_Dirhams_back.jpg&w=100&h=60&fit=cover" alt="200" referrerPolicy="no-referrer">
+                            <span>200</span>
+                        </button>
+                        <button class="cash-btn-modal" onclick="addAmount(100)">
+                            <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/7/7a/100_Moroccan_Dirhams_front.jpg&w=100&h=60&fit=cover" alt="100" referrerPolicy="no-referrer">
+                            <span>100</span>
+                        </button>
+                        <button class="cash-btn-modal" onclick="addAmount(50)">
+                            <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/5/5a/50_Moroccan_Dirhams_front.jpg&w=100&h=60&fit=cover" alt="50" referrerPolicy="no-referrer">
+                            <span>50</span>
+                        </button>
+                        <button class="cash-btn-modal" onclick="addAmount(20)">
+                            <img src="https://images.weserv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/0/0a/20_Moroccan_Dirhams_front.jpg&w=100&h=60&fit=cover" alt="20" referrerPolicy="no-referrer">
+                            <span>20</span>
+                        </button>
+                        <button class="cash-btn-modal clear" onclick="clearAmount()">
+                            <i class="fas fa-times-circle"></i>
+                            <span>مسح</span>
+                        </button>
+                    </div>
+                    <div class="change-display">
+                        <span>الباقي:</span>
+                        <span id="change-amount">0.00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-checkout-btn" class="btn btn-primary btn-lg">تأكيد وطباعة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="product-modal-title">إضافة منتج</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="product-form">
+                    <input type="hidden" id="product-id">
+                    <div class="form-group">
+                        <label>اسم المنتج</label>
+                        <input type="text" id="product-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الباركود</label>
+                        <div class="input-group">
+                            <input type="text" id="product-barcode" required>
+                            <button type="button" id="generate-barcode-btn" class="btn btn-secondary"><i class="fas fa-random"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>سعر الشراء</label>
+                            <input type="number" id="product-cost" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>سعر البيع</label>
+                            <input type="number" id="product-price" step="0.01" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>المخزون</label>
+                            <input type="number" id="product-stock" required>
+                        </div>
+                        <div class="form-group">
+                            <label>تنبيه النقص</label>
+                            <input type="number" id="product-alert" value="5">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>الفئة</label>
+                        <input type="text" id="product-category" list="categories-list">
+                        <datalist id="categories-list">
+                            <!-- Categories will be populated here -->
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>صورة المنتج</label>
+                        <div class="image-upload-wrapper">
+                            <input type="file" id="product-image-input" accept="image/*" style="display: none;">
+                            <button type="button" class="btn btn-secondary w-full" onclick="document.getElementById('product-image-input').click()">
+                                <i class="fas fa-image"></i> اختر صورة
+                            </button>
+                            <div id="image-preview-container" style="margin-top: 10px; text-align: center; display: none;">
+                                <img id="product-image-preview" src="" alt="Preview" style="max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid #ddd;">
+                                <button type="button" id="remove-image-btn" class="btn btn-danger btn-sm" style="margin-top: 5px; display: block; width: 100%;">حذف الصورة</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding: 15px 0 0 0; border-top: 1px solid #eee; margin-top: 20px;">
+                        <button type="submit" id="save-product-btn" class="btn btn-primary">حفظ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scanner-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>مسح الباركود</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="scanner-container">
+                    <video id="scanner-video" autoplay muted playsinline></video>
+                    <div class="scanner-controls-overlay">
+                        <button id="toggle-torch-btn" class="btn-icon-circle" title="تشغيل الفلاش"><i class="fas fa-lightbulb"></i></button>
+                    </div>
+                </div>
+                <div class="manual-barcode-input" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <input type="text" id="manual-barcode" placeholder="أدخل الباركود يدوياً..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    <button id="submit-manual-barcode" class="btn btn-primary">إضافة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Modal -->
+    <div id="invoice-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>تفاصيل الفاتورة</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body" id="invoice-details">
+                <!-- Invoice details injected here -->
+            </div>
+            <div class="modal-footer">
+                <button id="print-invoice-btn" class="btn btn-primary"><i class="fas fa-print"></i> طباعة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parked Sales Modal -->
+    <div id="parked-sales-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>المبيعات المعلقة</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="parked-sales-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/pos.js"></script>
+    <script src="js/sales.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker error', err));
+        }
+    </script>
+</body>
+</html>
